@@ -7,6 +7,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import org.fmm.teleworking.ui.MainViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 import org.fmm.teleworking.ui.MainScreen
+import org.fmm.teleworking.ui.MainScreenCalendar
+import org.fmm.teleworking.ui.MainScreenOld
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -14,7 +16,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val vm = hiltViewModel<MainViewModel>()
-            MainScreen(vm)
+//            MainScreenOld(vm)
+//            MainScreen(vm)
+            MainScreenCalendar(vm)
+
         }
     }
 }

@@ -1,10 +1,7 @@
-package org.fmm.teleworking.network
+package org.fmm.teleworking.data.network.api
 
-import org.fmm.teleworking.model.DayDto
-import org.fmm.teleworking.model.FestiveRequest
-import org.fmm.teleworking.model.ModalityRequest
-import org.fmm.teleworking.model.OpenYearRequest
-import org.fmm.teleworking.model.StatsDto
+import org.fmm.teleworking.domain.model.DayDto
+import org.fmm.teleworking.domain.model.StatsDto
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST

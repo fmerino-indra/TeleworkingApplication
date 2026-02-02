@@ -1,4 +1,4 @@
-package org.fmm.teleworking.model
+package org.fmm.teleworking.domain.model
 
 enum class Modality {
     TELEWORK,
