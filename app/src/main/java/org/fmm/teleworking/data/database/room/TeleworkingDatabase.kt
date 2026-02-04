@@ -12,7 +12,7 @@ import org.fmm.teleworking.data.model.util.TeleworkingConverters
 
 @Database(
     entities = [DomainDay::class, YearConfig::class, YearFestive::class],
-    version =  2,
+    version =  3,
     exportSchema =  false
 )
 @TypeConverters(TeleworkingConverters::class)
@@ -28,7 +28,7 @@ abstract class TeleworkingDatabase: RoomDatabase() {
 
         fun getInstance(context: Context): TeleworkingDatabase {
             if (!::INSTANCE.isInitialized)
-            synchronized(this) {
+                synchronized(this) {
                 val instance = Room.databaseBuilder(
                                 context,
                                 TeleworkingDatabase::class.java,

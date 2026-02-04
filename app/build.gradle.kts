@@ -87,6 +87,11 @@ dependencies {
 
     // --- Material Design (UI) --
     implementation(libs.androidx.material3)
+    //implementation(libs.androidx.material3.icons)
+
+    implementation("androidx.compose.material:material-icons-core:1.7.8")
+    implementation("androidx.compose.material:material-icons-extended:1.7.8")
+
     implementation(libs.google.material)
 
     // Dagger Hilt

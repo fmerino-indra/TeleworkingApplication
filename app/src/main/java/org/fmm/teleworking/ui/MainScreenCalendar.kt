@@ -1,12 +1,10 @@
 package org.fmm.teleworking.ui
 
 import android.content.Context
-import android.util.Log
 import androidx.annotation.AttrRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,10 +18,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.filled.MoreVert
+
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -32,6 +33,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -40,20 +43,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -69,6 +67,7 @@ import kotlinx.datetime.plus
 import kotlinx.datetime.toLocalDateTime
 import org.fmm.teleworking.domain.model.DayDto
 import org.fmm.teleworking.domain.model.Modality
+import org.fmm.teleworking.domain.model.MonthStatsDto
 import org.fmm.teleworking.ui.colors.CELL_BORDER
 import org.fmm.teleworking.ui.colors.COLOR_FESTIVE
 import org.fmm.teleworking.ui.colors.COLOR_HOLIDAY
@@ -78,25 +77,16 @@ import org.fmm.teleworking.ui.colors.COLOR_UNASSIGNED
 import org.fmm.teleworking.ui.colors.COLOR_WEEKEND
 import java.time.YearMonth
 
-/*
-private val COLOR_TELEWORK = R.color.yellow
-private val COLOR_PRESENTIAL = R.color.blue
-private val COLOR_UNASSIGNED = Color.White
-private val COLOR_FESTIVE = R.color.darkgrey
-private val COLOR_HOLIDAY = R.color.semidarkgrey
-private val COLOR_WEEKEND = R.color.grey
-private val CELL_BORDER = R.color.other
-*/
 enum class EditMode2 { NONE, TELEWORK, PRESENTIAL }
 
 // Habría que definir aquí la clase sealed Screend
-/*
+
 sealed class Screen {
     object Month : Screen()
     object OpenYear: Screen()
     object Stats : Screen()
 }
-*/
+
 
 @Composable
 fun MainScreenCalendar(entryViewModel: MainViewModel) {
@@ -134,8 +124,16 @@ fun MainScreenCalendar(entryViewModel: MainViewModel) {
     }
 
     // Collect days state from ViewModel
-    val days by viewModel.monthDays.collectAsState(initial = emptyList())
+    //val days by viewModel.monthDays.collectAsState(initial = emptyList())
+//    val monthDto by viewModel.monthDto.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
+    val monthDto =
+        when (uiState) {
+            is UiState.Loading -> MonthStatsDto.emptyMonthDto()
+            is UiState.Idle -> MonthStatsDto.emptyMonthDto()
+            is UiState.Success -> (uiState as UiState.Success).monthDto
+        }
     // when screen first composed: Load current month automatically
     LaunchedEffect(Unit) {
         // ensure yearText set to current year
@@ -148,7 +146,7 @@ fun MainScreenCalendar(entryViewModel: MainViewModel) {
 
     // Call the UI-only composable, passing all callbacks and state
     MainScreenCalendarContent(
-        days = days,
+        monthDto = monthDto,
         yearText = yearText,
         currentMonth = currentMonth,
         currentYear = currentYear,
@@ -188,10 +186,14 @@ fun MainScreenCalendar(entryViewModel: MainViewModel) {
     )
 }
 
+private fun loadingState() {
+
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreenCalendarContent(
-    days: List<DayDto>,
+    monthDto: MonthStatsDto,
     yearText: String,
     currentMonth: Int,
     currentYear: Int,
@@ -252,7 +254,10 @@ fun MainScreenCalendarContent(
             .fillMaxSize()) {
             when (currentScreen) {
                 is Screen.Month -> {
-                    MainScreenCalendarMonthEditor(2026,1,days,
+                    MainScreenCalendarMonthEditor(
+                        year = yearText.toIntOrNull() ?: currentYear,
+                        month = currentMonth,
+                        monthDto = monthDto,
                         onApplyModality = { date, modality ->
                             onSetModality(date, modality)
                         })
@@ -292,14 +297,15 @@ fun MainScreenCalendarContent(
 fun MainScreenCalendarMonthEditor (
     year: Int,
     month: Int,
-    days: List<DayDto>,
+    monthDto: MonthStatsDto,
     modifier: Modifier = Modifier,
-    onApplyModality: (dateIso: LocalDate, modality: Modality) -> Unit
+    onApplyModality: (date: LocalDate, modality: Modality) -> Unit
 ){
     // Which edit mode is active (T/P/None)
-    var editMode by remember { mutableStateOf(EditMode2.NONE) }
-    editMode = EditMode2.PRESENTIAL
+    var editMode: EditMode2 by remember { mutableStateOf(EditMode2.NONE) }
+    //editMode = EditMode2.PRESENTIAL
     Column(modifier = modifier.padding(8.dp)) {
+        /*
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Edit", modifier = Modifier.padding(end = 8.dp),
                 style=MaterialTheme.typography.labelMedium)
@@ -320,7 +326,33 @@ fun MainScreenCalendarMonthEditor (
                 style = MaterialTheme.typography.labelMedium
             )
         }
+
+         */
         Spacer(modifier = Modifier.height(8.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ModeSelector2(label="T",
+                icon = Icons.Default.Work,
+                color=COLOR_TELEWORK,
+                selected=editMode == EditMode2.TELEWORK,
+                onClick = {
+                    editMode = if (editMode == EditMode2.TELEWORK) EditMode2.NONE else EditMode2.TELEWORK
+                })
+            Spacer(modifier = Modifier.width(8.dp))
+            ModeSelector2(label="P",
+                icon = Icons.Default.Home,
+                color=COLOR_PRESENTIAL,
+                selected=editMode == EditMode2.PRESENTIAL,
+                onClick = {
+                    editMode = if (editMode == EditMode2.PRESENTIAL) EditMode2.NONE else EditMode2.PRESENTIAL
+                })
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "${YearMonth.of(year, month).month.name.lowercase()
+                    .replaceFirstChar { it.uppercase() }} $year",
+                style = MaterialTheme.typography.labelMedium
+            )
+        }
 
         // Build calendar matrix: list of weeks, each week is list of LocalDate?
         // (null for leading/trailing blanks)
@@ -329,43 +361,10 @@ fun MainScreenCalendarMonthEditor (
         }
 
         // Map dates to DayDto for quick lookup
-        val dayMap = remember(days) { days.associateBy { it.date }}
-
-        // Map to store cell bounds (for drag)
-        val cellBounds = remember { mutableStateMapOf<LocalDate, Rect>() } // date -> Rect
-
-        // Pointer input on whole grid to track drag/tap and compute which day is under pointer
-        val density = LocalDensity.current
+        val dayMap = remember(monthDto.days) { monthDto.days.associateBy { it.date }}
 
         Column(
-            modifier = Modifier.fillMaxSize()
-                .wrapContentHeight()
-                .pointerInput(editMode) {
-                    // only active if editMode != NONE
-                    // detect gestures and apply modality accordingly
-                    if (editMode == EditMode2.NONE) return@pointerInput
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        // process initial position
-                        processPointerPosition(down.position, cellBounds, editMode,onApplyModality)
-                        //  then track moves until pointer up
-                        var pointerUp = false
-                        while (!pointerUp) {
-                            val event = awaitPointerEvent()
-                            // handle all changes in event
-                            event.changes.forEach { pc ->
-//                                if (!pc.isConsumed && pc.previousPressed)
-                                if (pc.pressed)
-                                    processPointerPosition(pc.position, cellBounds, editMode, onApplyModality)
-                                else
-                                    pointerUp = true
-
-                            }
-                        }
-                    }
-                }
-
-        ) {
+            modifier = Modifier.fillMaxWidth()) {
             // Weekday headers (Mon..Sun). Choose MOnday start; change if needed.
             Row(modifier = Modifier.fillMaxWidth()) {
                 val headers = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
@@ -382,11 +381,8 @@ fun MainScreenCalendarMonthEditor (
 
             // Calendar grid: one row per week
             for (week in weeks) {
-                Log.d("[FMM]", "Semana: $week")
-                println("Hola, amigo. Este es el bueno")
                 Row(modifier = Modifier.fillMaxWidth()) {
                     for (date in week) {
-                        Log.d("[FMM]", "Día: $date")
                         Box(
                             modifier= Modifier
                                 .weight(1f)
@@ -401,23 +397,16 @@ fun MainScreenCalendarMonthEditor (
                                     shape = RoundedCornerShape(6.dp)
                                 ))
                             } else {
-                                val iso = date.toString()
                                 val dto = dayMap[date]
-                                DayCell(
+                                DayCellTap(
                                     date = date,
                                     dto = dto,
-                                    onPositioned = { rect ->
-                                        // store bounds in root coordinates
-                                        cellBounds[date] = rect
-                                    },
-                                    onTap = {
+                                    editMode = editMode,
+                                    onApply = { date, modality ->
                                         // apply mode if allowed
-                                        if (editMode != EditMode2.NONE) {
-                                            val modality = if (editMode == EditMode2.TELEWORK)
-                                                Modality.TELEWORK else Modality.PRESENTIAL
-                                            if (!isNonEditableDay(dto)) {
+                                        if ((editMode != EditMode2.NONE)
+                                            && !isNonEditableDay(dto)) {
                                                 onApplyModality(date, modality)
-                                            }
                                         }
                                     }
                                 )
@@ -435,7 +424,9 @@ fun MainScreenCalendarMonthEditor (
 private fun ToggleButton(label: String, colorBase: Color,  selected: Boolean, onClick: () -> Unit) {
     val dark = colorBase.changeSL(0.549f)
     Button(
-        onClick=onClick,
+        onClick= {
+            onClick()
+        } ,
         colors = ButtonDefaults.buttonColors(
             containerColor = if (selected) colorBase else dark,
             contentColor = Color.White
@@ -451,24 +442,123 @@ private fun ToggleButton(label: String, colorBase: Color,  selected: Boolean, on
     }
 }
 
+@Composable
+private fun ModeSelector(label: String, icon: ImageVector,
+                         color: Color,  selected: Boolean, onClick:()->Unit) {
+    val bg=if(selected) color.copy(alpha =  0.18f) else Color.Transparent
+    val contentColor = if (selected) color else Color.Black
+
+    Row (
+        modifier = Modifier
+            .padding(end =4.dp)
+            .background(bg, RoundedCornerShape(8.dp))
+            .clickable { onClick()}
+            .padding(horizontal =  8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            modifier =  Modifier.size(28.dp),
+            shape = CircleShape,
+            color = if (selected) color else Color.LightGray.copy(alpha = 0.2f)
+        ) {
+            Icon(icon, contentDescription = label,
+                tint =  Color.White, modifier = Modifier.padding(6.dp))
+        }
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(text =  label, color =  contentColor)
+    }
+}
+
+@Composable
+private fun ModeSelector2(label: String, icon: ImageVector,
+                         color: Color,  selected: Boolean, onClick:()->Unit) {
+
+    val bgSelected = color.copy(alpha =  0.22f)
+    val bgUnselected = Color.Transparent
+
+    val circleSelected = color
+    val circleUnselected = color.copy(alpha =  0.65f)
+
+    val textSelected = color
+    val textUnselected = COLOR_FESTIVE
+
+    val borderSelected = Color.Transparent
+    val borderUnselected = color.copy(alpha =  0.5f)
+
+    val containerBg =
+        if (selected) bgSelected
+        else bgUnselected
+
+    val circleColor =
+        if (selected) circleSelected
+        else circleUnselected
+
+    val textColor =
+        if (selected) textSelected
+        else textUnselected
+
+    val elevation =
+        if (selected) 3.dp
+        else 0.dp
+
+    val borderColor =
+        if (selected) borderSelected
+        else borderUnselected
+
+    Row (
+        modifier = Modifier
+            .padding(end =8.dp)
+            .background(containerBg, RoundedCornerShape(10.dp))
+            .border(
+                width =  1.dp,
+                color = borderColor,
+                shape = RoundedCornerShape(10.dp)
+            )
+            .clickable (
+                onClick = onClick,
+                role = Role.Button
+            )
+            .padding(horizontal =  8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Surface(
+            modifier =  Modifier.size(28.dp),
+            shape = CircleShape,
+            color = circleColor,
+            tonalElevation = elevation
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = "$label mode",
+                tint =  Color.White,
+                modifier = Modifier.padding(6.dp))
+        }
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text=label,
+            color=textColor,
+            style =  MaterialTheme.typography.labelLarge
+        )
+    }
+}
+
 /**
  * Day cell: draws colored background based on modality / weekend / festive
  */
 @Composable
-private fun DayCell(
+private fun DayCellTap(
     date: LocalDate,
     dto: DayDto?,
-    onPositioned: (Rect) -> Unit,
-    onTap: () -> Unit
+    editMode: EditMode2,
+    onApply: (date: LocalDate, modality: Modality) -> Unit
 ) {
     // Determine color
     val bg = when {
-        dto?.festive == true -> COLOR_FESTIVE
-        date.dayOfWeek == DayOfWeek.SATURDAY
-                || date.dayOfWeek == DayOfWeek.SUNDAY -> COLOR_WEEKEND
-        dto?.modality == Modality.HOLIDAY -> COLOR_HOLIDAY
-        dto?.modality == Modality.TELEWORK -> COLOR_TELEWORK
-        dto?.modality == Modality.PRESENTIAL -> COLOR_PRESENTIAL
+        dto?.isFestive() == true -> COLOR_FESTIVE
+        DayDto.isWeekend(date) -> COLOR_WEEKEND
+        dto?.isHoliday() == true -> COLOR_HOLIDAY
+        dto?.isTelework() == true -> COLOR_TELEWORK
+        dto?.isPresential() == true -> COLOR_PRESENTIAL
         else -> COLOR_UNASSIGNED
     }
 
@@ -480,21 +570,15 @@ private fun DayCell(
             .fillMaxSize()
             .border(1.dp, borderColor, RoundedCornerShape(6.dp))
             .background(color=bg, shape = RoundedCornerShape(6.dp))
-            .onGloballyPositioned { coords ->
-                // bounds in window/root: record as Rect (left, top, right, bottom) in px
-                val pos = coords.boundsInRoot()
-                onPositioned(Rect(pos.left, pos.top, pos.right, pos.bottom))
-            }
             .padding(6.dp)
-            .pointerInput(Unit) {
-                // simple tap handler per cell (so quick taps also work
-                awaitEachGesture {
-                    val down = awaitFirstDown()
-                    // treat as tap if released without significant move
-                    val up = awaitPointerEvent()
-                    if (up.changes.all { !it.pressed }) {
-                        onTap()
-                    }
+            .clickable {
+                if (editMode != EditMode2.NONE && !isNonEditableDay(dto)) {
+                    val modality =
+                        if (editMode == EditMode2.TELEWORK)
+                            Modality.TELEWORK
+                        else
+                            Modality.PRESENTIAL
+                    onApply(date, modality)
                 }
             }
     ) {
@@ -519,30 +603,8 @@ private fun DayCell(
 private fun isNonEditableDay(dto: DayDto?): Boolean {
     if (dto == null)
         return false
-    return dto.festive || dto.weekend
-}
-
-/**
- * Process pointer prositions (px) against known cellBounds to apply modality
- */
-private fun processPointerPosition(
-    position: Offset,
-    cellBounds: Map<LocalDate, Rect>,
-    editMode: EditMode2,
-    onApply: (LocalDate, Modality) -> Unit
-    ) {
-    // Find first key whose rect contains the pointer
-    val hit = cellBounds.entries.firstOrNull {(_,rect)->
-        rect.contains(position)
-    }
-    if (hit != null) {
-        val (iso,_) = hit
-        val modality =
-            if (editMode == EditMode2.TELEWORK) Modality.TELEWORK
-            else Modality.PRESENTIAL
-        // apply directly (caller should ignore if non-editable)
-        onApply(iso, modality)
-    }
+//    return dto.festive || dto.weekend
+    return DayDto.isWeekend(dto.date)
 }
 
 /**
@@ -591,23 +653,23 @@ private fun buildMonthMatrix(year: Int, month: Int): List<List<LocalDate?>> {
 @Composable
 fun CalendarMonthEditorPreview() {
     val sampleDays = listOf(
-        DayDto(LocalDate.parse("2026-01-01"), Modality.FESTIVE, weekend = false, festive = true),
-        DayDto(LocalDate.parse("2026-01-02"), Modality.TELEWORK, weekend = false, festive = false),
-        DayDto(LocalDate.parse("2026-01-03"), Modality.WEEKEND, weekend = true, festive = false),
-        DayDto(LocalDate.parse("2026-01-04"), Modality.WEEKEND, weekend = true, festive = false),
-        DayDto(LocalDate.parse("2026-01-05"), Modality.HOLIDAY, weekend = false, festive = false),
-        DayDto(LocalDate.parse("2026-01-06"), Modality.FESTIVE, weekend = false, festive = true),
-        DayDto(LocalDate.parse("2026-01-07"), Modality.PRESENTIAL, weekend = false, festive = false),
-        DayDto(LocalDate.parse("2026-01-08"), Modality.TELEWORK, weekend = false, festive = false),
-        DayDto(LocalDate.parse("2026-01-09"), Modality.PRESENTIAL, weekend = false, festive = false),
-        DayDto(LocalDate.parse("2026-01-10"), Modality.WEEKEND, weekend = true, festive = false),
-        DayDto(LocalDate.parse("2026-01-11"), Modality.WEEKEND, weekend = true, festive = false),
+        DayDto(LocalDate.parse("2026-01-01"), Modality.FESTIVE),
+        DayDto(LocalDate.parse("2026-01-02"), Modality.TELEWORK),
+        DayDto(LocalDate.parse("2026-01-03"), Modality.WEEKEND),
+        DayDto(LocalDate.parse("2026-01-04"), Modality.WEEKEND),
+        DayDto(LocalDate.parse("2026-01-05"), Modality.HOLIDAY),
+        DayDto(LocalDate.parse("2026-01-06"), Modality.FESTIVE),
+        DayDto(LocalDate.parse("2026-01-07"), Modality.PRESENTIAL),
+        DayDto(LocalDate.parse("2026-01-08"), Modality.TELEWORK),
+        DayDto(LocalDate.parse("2026-01-09"), Modality.PRESENTIAL),
+        DayDto(LocalDate.parse("2026-01-10"), Modality.WEEKEND),
+        DayDto(LocalDate.parse("2026-01-11"), Modality.WEEKEND),
     )
     Surface {
         MainScreenCalendarMonthEditor(
         year =2026,
         month = 1,
-        days = sampleDays,
+        monthDto = MonthStatsDto(year = 2026 ,  month = 1, sampleDays) ,
         onApplyModality = { dateIso, modality -> }
     )}
 }
@@ -639,4 +701,72 @@ private fun Color.changeSL(saturationFactor:Float=1f, lightnessFactor:Float=1f):
 
 fun Color.toHexCode(): String {
     return String.format("#%08X", this.toArgb())
+}
+
+
+/* ------------------- OpenYearView --------------------*/
+
+@Composable
+fun OpenYearView(
+    yearText: String,
+    onYearChange: (String) -> Unit,
+    onOpenYear: (Int) -> Unit,
+    onCancel: () -> Unit
+)  {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Text("Open Year", style = MaterialTheme.typography.headlineSmall)
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedTextField(value =yearText, onValueChange = onYearChange, label = { Text("Year") })
+        Spacer(modifier = Modifier.height(12.dp))
+        Row {
+            Button (onClick = { onOpenYear( yearText.toIntOrNull() ?: now().year) }) {
+                Text("Open")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            OutlinedButton ( onClick = onCancel) { Text("Cancel") }
+        }
+    }
+}
+
+/* -------------------- StatsView -------------------- */
+@Composable
+fun StatsView(
+    yearText: String,
+    onYearChange: (String) -> Unit,
+    onLoadAnnualStats: (Int) -> Unit,
+    onLoadQuarterStats: (Int, Int) -> Unit,
+    onBack: () -> Unit
+) {
+    Column (modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Text("Statistics", style = MaterialTheme.typography.headlineSmall)
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedTextField(
+            value = yearText,
+            onValueChange = onYearChange,
+            label = { Text("Year") },
+            modifier = Modifier.width(140.dp)
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Row {
+            Button(onClick = { onLoadAnnualStats(yearText.toIntOrNull()?: now().year) }) {
+                Text("Load Annual")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = { onLoadQuarterStats(yearText.toIntOrNull()?: now().year, 1) }) {
+                Text("Load Q1")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = { onBack() }) {
+                Text("Back")
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Text("Note: Results are provided by the ViewModel (use Logcat or add state exposure to " +
+                "render results).")
+    }
+}
+
+private fun now(): LocalDate {
+    return Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
 }

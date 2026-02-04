@@ -3,12 +3,14 @@ package org.fmm.teleworking
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import dagger.hilt.android.AndroidEntryPoint
-import org.fmm.teleworking.ui.MainViewModel
+import androidx.compose.runtime.remember
 import androidx.hilt.navigation.compose.hiltViewModel
-import org.fmm.teleworking.ui.MainScreen
+import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import org.fmm.teleworking.ui.MainScreenCalendar
-import org.fmm.teleworking.ui.MainScreenOld
+import org.fmm.teleworking.ui.MainViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -16,6 +18,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             val vm = hiltViewModel<MainViewModel>()
+            val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+            val currentYear = today.year
+            val currentMonth = today.monthNumber
+
+            vm.initData(currentYear, currentMonth)
 //            MainScreenOld(vm)
 //            MainScreen(vm)
             MainScreenCalendar(vm)

@@ -19,6 +19,15 @@ import javax.inject.Singleton
 class DBCalendarRepository @Inject constructor(
     private val db: TeleworkingDatabase
 ): ICalendarRepository {
+    suspend fun deleteYear(year: Int) {
+        val yearConfig = db.yearConfigDao().findById(year)
+        if (yearConfig != null) {
+            val days = db.domainDayDao().findByYear(year)
+            db.domainDayDao().removeDomainDaysByYear(year)
+            db.yearConfigDao().removeYearConfig(yearConfig)
+        }
+
+    }
     override suspend fun openYear(year: Int): YearConfig = withContext(Dispatchers.IO) {
         val yearConfig = YearConfig(year)
 
@@ -28,8 +37,12 @@ class DBCalendarRepository @Inject constructor(
         val end = LocalDate(year=year, monthNumber =12, 31)
         var d = start;
         while (d <= end) {
-            val day = db.domainDayDao().addDomainDay(DomainDay(date =d, modality =Modality
-                .UNASSIGNED))
+            val day = DomainDay(date =d,
+                modality =
+                    if (DomainDay.isWeekend(d)) Modality.WEEKEND
+                    else Modality.UNASSIGNED
+            )
+                db.domainDayDao().addDomainDay(day)
             d=d.plus(1, DateTimeUnit.DAY)
         }
         yearConfig
@@ -41,27 +54,33 @@ class DBCalendarRepository @Inject constructor(
     }
 
     override suspend fun getYearConfig(year: Int): YearConfig? = withContext(Dispatchers.IO) {
-        val config = db.yearConfigDao().findById(year)
+        val config: YearConfig? = db.yearConfigDao().findById(year)
         config
-
     }
     override suspend fun getMonth(year: Int, month:Int): List<DayDto>  = withContext(Dispatchers.IO) {
-        val lists = db.domainDayDao().findAllDomainDay()
+        val lists = db.domainDayDao().findByYearAndMonth(year, month)
         lists.stream()
             .map {
                 DayDto(
-                    it.date,
-                    it.modality,
-                    DayDto.isWeekend(it.date),
-                    false
+                    date = it.date,
+                    modality = it.modality
                 )}
             .collect(Collectors.toList())
     }
+    override suspend fun setModality(date: LocalDate, modality: Modality): DayDto {
+        val day = db.domainDayDao().findByDate(date)
+        val modDay = day.copy(modality = modality)
+        db.domainDayDao().updateDomainDay(modDay)
+
+        return DayDto(
+            date=date,
+            modality = modDay.modality)
+    }
+
+
     /*
     override suspend fun toggleFestive(year: Int, date: LocalDate, festive: Boolean)=
         api.toggleFestive (year, FestiveRequest(date = date, festive = festive))
-    override suspend fun setModality(date: LocalDate, modality: Modality): DayDto =
-        api.setModality(ModalityRequest(date, modality))
     override suspend fun quarterStats(year: Int,  q:Int): StatsDto =
         api.quarterStats(year, q)
     override suspend fun annualStats(year: Int): StatsDto =

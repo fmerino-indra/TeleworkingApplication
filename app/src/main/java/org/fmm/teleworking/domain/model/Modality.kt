@@ -4,7 +4,6 @@ enum class Modality {
     TELEWORK,
     PRESENTIAL,
     TRAVEL,
-    VACATION,
     HOLIDAY,
     WEEKEND,
     FESTIVE,

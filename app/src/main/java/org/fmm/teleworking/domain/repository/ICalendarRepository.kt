@@ -21,4 +21,6 @@ interface ICalendarRepository {
 
  */
     suspend fun getYearConfig(year: Int): YearConfig?
+
+    suspend fun setModality(date: LocalDate, modality: Modality):DayDto
 }

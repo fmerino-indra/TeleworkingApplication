@@ -5,10 +5,22 @@ import kotlinx.datetime.LocalDate
 
 class TeleworkingConverters {
     @TypeConverter
+    fun toLocalDate(epochDay: Int?): LocalDate? =
+        epochDay?.let { LocalDate.fromEpochDays(epochDay) }
+
+    @TypeConverter
+    fun fromLocalDate(date: LocalDate?): Int? =
+        date?.toEpochDays()
+
+    /*
+    @TypeConverter
     fun fromString(value: String?): LocalDate? =
         value?.let (LocalDate::parse)
 
     @TypeConverter
     fun toString(date: LocalDate?): String? =
         date?.toString()
+
+
+     */
 }
