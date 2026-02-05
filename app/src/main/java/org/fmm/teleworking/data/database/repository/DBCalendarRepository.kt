@@ -37,12 +37,21 @@ class DBCalendarRepository @Inject constructor(
         val end = LocalDate(year=year, monthNumber =12, 31)
         var d = start;
         while (d <= end) {
+            db.domainDayDao().addDomainDay(
+                DomainDay(date =d,modality =
+                    if (DomainDay.isWeekend(d)) Modality.WEEKEND
+                    else Modality.UNASSIGNED
+                )
+            )
+            /*
             val day = DomainDay(date =d,
                 modality =
                     if (DomainDay.isWeekend(d)) Modality.WEEKEND
                     else Modality.UNASSIGNED
             )
-                db.domainDayDao().addDomainDay(day)
+            db.domainDayDao().addDomainDay(day)
+
+             */
             d=d.plus(1, DateTimeUnit.DAY)
         }
         yearConfig
@@ -77,6 +86,14 @@ class DBCalendarRepository @Inject constructor(
             modality = modDay.modality)
     }
 
+    override suspend fun yearStats(year: Int): List<DayDto> =
+        toDto(db.domainDayDao().findByYear(year))
+
+    override suspend fun quarterStats(
+        year: Int,
+        quarter: Int
+    ): List<DayDto> =
+        toDto(db.domainDayDao().findByYear(year))
 
     /*
     override suspend fun toggleFestive(year: Int, date: LocalDate, festive: Boolean)=
@@ -87,4 +104,13 @@ class DBCalendarRepository @Inject constructor(
         api.annualStats(year)
 
      */
+    private fun toDto(list: List<DomainDay>): List<DayDto> =
+        list.stream()
+            .map {
+                DayDto(
+                    date = it.date,
+                    modality = it.modality
+                )}
+            .collect(Collectors.toList())
+
 }

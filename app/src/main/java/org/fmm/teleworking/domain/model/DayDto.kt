@@ -1,10 +1,13 @@
 package org.fmm.teleworking.domain.model
 
+import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
 
 data class DayDto (
     val date: LocalDate,
@@ -24,10 +27,14 @@ data class DayDto (
          */
         fun isWeekend(date: LocalDate): Boolean =
             date.dayOfWeek == DayOfWeek.SATURDAY || date.dayOfWeek == DayOfWeek.SUNDAY
-        fun numDays(year: Int, month: Int): Int {
+        fun calcNumDaysByMonth(year: Int, month: Int): Int {
             val date = LocalDate(year=year, monthNumber =month, 1)
             val last = date.plus(1, DateTimeUnit.MONTH).minus(1, DateTimeUnit.DAY)
             return last.dayOfMonth
+        }
+
+        fun now(): LocalDate {
+            return Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
         }
     }
 }

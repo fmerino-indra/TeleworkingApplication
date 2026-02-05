@@ -4,7 +4,6 @@ import kotlinx.datetime.LocalDate
 import org.fmm.teleworking.data.model.YearConfig
 import org.fmm.teleworking.domain.model.DayDto
 import org.fmm.teleworking.domain.model.Modality
-import org.fmm.teleworking.domain.model.StatsDto
 import javax.inject.Singleton
 
 @Singleton
@@ -23,4 +22,6 @@ interface ICalendarRepository {
     suspend fun getYearConfig(year: Int): YearConfig?
 
     suspend fun setModality(date: LocalDate, modality: Modality):DayDto
+    suspend fun yearStats(year: Int): List<DayDto>
+    suspend fun quarterStats(year: Int, quarter: Int): List<DayDto>
 }

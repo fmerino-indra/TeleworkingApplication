@@ -1,5 +1,6 @@
 package org.fmm.teleworking.domain.model
 
+@Deprecated("Use org.fmm.teleworking.data.domain.model.stats.MonthStatsDto")
 data class MonthStatsDto (
     val year: Int,
     val month: Int,
@@ -22,7 +23,7 @@ data class MonthStatsDto (
         }
     }.eachCount()
     val totalDays: Int
-        get() = DayDto.numDays(year, month)
+        get() = DayDto.calcNumDaysByMonth(year, month)
     val totalWorkingdays: Int
         get() = totalDays - getWeekendCount() - getFestiveCount() - getHolidayCount()
     val totalNonWorkingdays: Int

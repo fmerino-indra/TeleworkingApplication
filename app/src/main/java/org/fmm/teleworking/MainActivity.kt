@@ -9,15 +9,15 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import org.fmm.teleworking.ui.MainScreenCalendar
-import org.fmm.teleworking.ui.MainViewModel
+import org.fmm.teleworking.ui.MainScreen
+import org.fmm.teleworking.ui.calendar.CalendarViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val vm = hiltViewModel<MainViewModel>()
+            val vm = hiltViewModel<CalendarViewModel>()
             val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
             val currentYear = today.year
             val currentMonth = today.monthNumber
@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
             vm.initData(currentYear, currentMonth)
 //            MainScreenOld(vm)
 //            MainScreen(vm)
-            MainScreenCalendar(vm)
+            MainScreen(vm)
 
         }
     }

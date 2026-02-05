@@ -1,14 +1,6 @@
 package org.fmm.teleworking.data.network.repository
 
-import kotlinx.datetime.LocalDate
-import org.fmm.teleworking.domain.model.DayDto
-import org.fmm.teleworking.domain.model.Modality
-import org.fmm.teleworking.domain.model.StatsDto
 import org.fmm.teleworking.data.network.api.ApiService
-import org.fmm.teleworking.data.network.api.FestiveRequest
-import org.fmm.teleworking.data.network.api.ModalityRequest
-import org.fmm.teleworking.data.network.api.OpenYearRequest
-import org.fmm.teleworking.domain.repository.ICalendarRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 

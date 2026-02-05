@@ -1,4 +1,4 @@
-package org.fmm.teleworking.ui
+package org.fmm.teleworking.ui.calendar
 
 import android.content.Context
 import androidx.annotation.AttrRes
@@ -23,25 +23,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Work
-import androidx.compose.material.icons.filled.MoreVert
-
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,17 +45,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.ColorUtils
-import kotlinx.datetime.Clock
+import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
-import kotlinx.datetime.toLocalDateTime
 import org.fmm.teleworking.domain.model.DayDto
 import org.fmm.teleworking.domain.model.Modality
-import org.fmm.teleworking.domain.model.MonthStatsDto
+import org.fmm.teleworking.domain.model.stats.MonthStatsDto
 import org.fmm.teleworking.ui.colors.CELL_BORDER
 import org.fmm.teleworking.ui.colors.COLOR_FESTIVE
 import org.fmm.teleworking.ui.colors.COLOR_HOLIDAY
@@ -79,219 +64,6 @@ import java.time.YearMonth
 
 enum class EditMode2 { NONE, TELEWORK, PRESENTIAL }
 
-// Habría que definir aquí la clase sealed Screend
-
-sealed class Screen {
-    object Month : Screen()
-    object OpenYear: Screen()
-    object Stats : Screen()
-}
-
-
-@Composable
-fun MainScreenCalendar(entryViewModel: MainViewModel) {
-    // obtain viewModel via Hilt if not provided (helps previews / tests)
-    val viewModel: MainViewModel = entryViewModel
-
-    /*
-     Dates
-     */
-
-    //val today = remember { LocalDate.now() }
-    // current month/year defaults (start with current month)
-    val today = remember {  Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date }
-    val currentYear = today.year
-    val currentMonth = today.monthNumber
-
-    /*
-    Navigation and menu
-    */
-
-    // screen selection
-    var currentScreen by remember {
-        mutableStateOf<Screen>(Screen.Month)
-    }
-
-    // menu state for 3-dots menu
-    var menuExpanded by remember {
-        mutableStateOf(false)
-    }
-
-
-    // year input state (shared beween screens)
-    var yearText by remember {
-        mutableStateOf(today.year.toString())
-    }
-
-    // Collect days state from ViewModel
-    //val days by viewModel.monthDays.collectAsState(initial = emptyList())
-//    val monthDto by viewModel.monthDto.collectAsState()
-    val uiState by viewModel.uiState.collectAsState()
-
-    val monthDto =
-        when (uiState) {
-            is UiState.Loading -> MonthStatsDto.emptyMonthDto()
-            is UiState.Idle -> MonthStatsDto.emptyMonthDto()
-            is UiState.Success -> (uiState as UiState.Success).monthDto
-        }
-    // when screen first composed: Load current month automatically
-    LaunchedEffect(Unit) {
-        // ensure yearText set to current year
-        yearText = currentYear.toString()
-
-        // open year (create calendar) optionally - comment if you don't want auto-open
-        // viewModel.openYear(currentYear)
-        viewModel.loadMonth(currentYear, currentMonth)
-    }
-
-    // Call the UI-only composable, passing all callbacks and state
-    MainScreenCalendarContent(
-        monthDto = monthDto,
-        yearText = yearText,
-        currentMonth = currentMonth,
-        currentYear = currentYear,
-        menuExpanded = menuExpanded,
-        onMenuToggle = { menuExpanded = it },
-        onNavigateToOpenYear = {
-            menuExpanded = false
-            currentScreen = Screen.OpenYear
-        },
-        onNavigateToStats = {
-            menuExpanded = false
-            currentScreen = Screen.Stats
-        },
-        onNavigateToMonth = {
-            menuExpanded = false
-            currentScreen = Screen.Month
-            val y = yearText.toIntOrNull() ?: currentYear
-            viewModel.loadMonth(y, currentMonth)
-        },
-        onYearChange = { newYear -> yearText = newYear },
-        onOpenYear = {y ->
-            yearText = y.toString()
-            viewModel.openYear(y)
-            // After opening, show month view (January)
-            currentScreen = Screen.Month
-            viewModel.loadMonth(y, 1)
-        },
-        onLoadMonth = { y, m ->
-            viewModel.loadMonth(y,m)
-            currentScreen = Screen.Month
-        },
-        onSetTelework = { date -> viewModel.setModality(date, Modality.TELEWORK)},
-        onSetPresential = { date -> viewModel.setModality(date, Modality.PRESENTIAL)},
-        onSetModality = { date, modality ->
-            viewModel.setModality(date = date, modality = modality) },
-        currentScreen = currentScreen
-    )
-}
-
-private fun loadingState() {
-
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun MainScreenCalendarContent(
-    monthDto: MonthStatsDto,
-    yearText: String,
-    currentMonth: Int,
-    currentYear: Int,
-    menuExpanded: Boolean,
-    onMenuToggle: (Boolean) -> Unit,
-    onNavigateToOpenYear: () -> Unit,
-    onNavigateToStats: () -> Unit,
-    onNavigateToMonth: () -> Unit,
-    onYearChange: (String) -> Unit,
-    onOpenYear: (Int) -> Unit,
-    onLoadMonth: (Int, Int) -> Unit,
-    onSetTelework: (LocalDate) -> Unit,
-    onSetPresential: (LocalDate) -> Unit,
-    onSetModality: (LocalDate, Modality) -> Unit,
-    currentScreen: Screen
-) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Control Teletrabajo") },
-                actions =  {
-                    // three dots menu
-                    IconButton (onClick = { onMenuToggle(true) }) {
-                        Icon(imageVector = Icons.Default.MoreVert, contentDescription = "Menu")
-                    }
-                    DropdownMenu (
-                        expanded = menuExpanded,
-                        onDismissRequest = { onMenuToggle(false)  }
-                    ) {
-                        DropdownMenuItem(
-                            text = {Text("Open Year")},
-                            onClick = {
-                                onMenuToggle(false)
-                                onNavigateToOpenYear()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = {Text("Statistics")},
-                            onClick = {
-                                onMenuToggle(false)
-                                onNavigateToStats()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = {Text("Load Month")},
-                            onClick = {
-                                onMenuToggle(false)
-                                onNavigateToMonth()
-                            }
-                        )
-                    } // DropdownMenu
-                }
-            ) // TopAppBar
-        }
-    ) { innerPadding ->
-        Box(modifier = Modifier
-            .padding(innerPadding)
-            .fillMaxSize()) {
-            when (currentScreen) {
-                is Screen.Month -> {
-                    MainScreenCalendarMonthEditor(
-                        year = yearText.toIntOrNull() ?: currentYear,
-                        month = currentMonth,
-                        monthDto = monthDto,
-                        onApplyModality = { date, modality ->
-                            onSetModality(date, modality)
-                        })
-                }
-                is Screen.OpenYear -> {
-                    OpenYearView(
-                        yearText = yearText,
-                        onYearChange = onYearChange,
-                        onOpenYear = { y -> onOpenYear(y) },
-                        onCancel =  { /* Navigate back to the month */
-                            onNavigateToMonth()
-                        }
-                    )
-                }
-                is Screen.Stats -> {
-                    StatsView(
-                        yearText = yearText,
-                        onYearChange = onYearChange,
-                        onLoadAnnualStats = { y ->
-                            /* delegate to VM in MainScreen */
-                            onLoadMonth(y,1)
-                        },
-                        onLoadQuarterStats = { y,q ->
-                            /* same: delegate*/
-                            onLoadMonth(y,(q-1) *3+1)
-                        },
-                        onBack = { onNavigateToMonth() }
-                    )
-                }
-            }
-        }
-    }
-}
-
 
 @Composable
 fun MainScreenCalendarMonthEditor (
@@ -301,6 +73,8 @@ fun MainScreenCalendarMonthEditor (
     modifier: Modifier = Modifier,
     onApplyModality: (date: LocalDate, modality: Modality) -> Unit
 ){
+    //val vm = hiltViewModel<CalendarViewModel>()
+
     // Which edit mode is active (T/P/None)
     var editMode: EditMode2 by remember { mutableStateOf(EditMode2.NONE) }
     //editMode = EditMode2.PRESENTIAL
@@ -704,69 +478,3 @@ fun Color.toHexCode(): String {
 }
 
 
-/* ------------------- OpenYearView --------------------*/
-
-@Composable
-fun OpenYearView(
-    yearText: String,
-    onYearChange: (String) -> Unit,
-    onOpenYear: (Int) -> Unit,
-    onCancel: () -> Unit
-)  {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-        Text("Open Year", style = MaterialTheme.typography.headlineSmall)
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(value =yearText, onValueChange = onYearChange, label = { Text("Year") })
-        Spacer(modifier = Modifier.height(12.dp))
-        Row {
-            Button (onClick = { onOpenYear( yearText.toIntOrNull() ?: now().year) }) {
-                Text("Open")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            OutlinedButton ( onClick = onCancel) { Text("Cancel") }
-        }
-    }
-}
-
-/* -------------------- StatsView -------------------- */
-@Composable
-fun StatsView(
-    yearText: String,
-    onYearChange: (String) -> Unit,
-    onLoadAnnualStats: (Int) -> Unit,
-    onLoadQuarterStats: (Int, Int) -> Unit,
-    onBack: () -> Unit
-) {
-    Column (modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text("Statistics", style = MaterialTheme.typography.headlineSmall)
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
-            value = yearText,
-            onValueChange = onYearChange,
-            label = { Text("Year") },
-            modifier = Modifier.width(140.dp)
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Row {
-            Button(onClick = { onLoadAnnualStats(yearText.toIntOrNull()?: now().year) }) {
-                Text("Load Annual")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = { onLoadQuarterStats(yearText.toIntOrNull()?: now().year, 1) }) {
-                Text("Load Q1")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = { onBack() }) {
-                Text("Back")
-            }
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-        Text("Note: Results are provided by the ViewModel (use Logcat or add state exposure to " +
-                "render results).")
-    }
-}
-
-private fun now(): LocalDate {
-    return Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-}

@@ -1,4 +1,4 @@
-package org.fmm.teleworking.ui
+package org.fmm.teleworking.ui.calendar
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -6,27 +6,28 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.number
-import org.fmm.teleworking.domain.model.DayDto
 import org.fmm.teleworking.domain.model.Modality
-import org.fmm.teleworking.domain.model.MonthStatsDto
+import org.fmm.teleworking.domain.model.stats.MonthStatsDto
 import org.fmm.teleworking.domain.usecases.GetMonth
 import org.fmm.teleworking.domain.usecases.IsYearOpened
 import org.fmm.teleworking.domain.usecases.OpenYear
 import org.fmm.teleworking.domain.usecases.SetModality
+import org.fmm.teleworking.domain.usecases.YearStats
+import org.fmm.teleworking.ui.UiState
 import javax.inject.Inject
 
 @HiltViewModel
-class MainViewModel @Inject constructor(
+class CalendarViewModel @Inject constructor(
     private val openYearUC: OpenYear,
     private val getMonthUC: GetMonth,
     private val setModalityUC: SetModality,
-    private val isYearOpenedUC: IsYearOpened
+    private val isYearOpenedUC: IsYearOpened,
+    private val yearStatsUC: YearStats
 ): ViewModel() {
     private val _uiState = MutableStateFlow<UiState>(UiState.Loading)
     val uiState get() = _uiState.asStateFlow()
@@ -79,6 +80,26 @@ class MainViewModel @Inject constructor(
                 }
             )
         }
+    }
+
+    fun loadYearStats(year: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+
+            val result = runCatching {
+                val stats = yearStatsUC(year)
+                stats
+            }
+            result.fold(
+                onSuccess = {
+                    _uiState.value = UiState.Success(it)
+                    //_monthDto.value = it
+                },
+                onFailure = {exception ->
+                    Log.e("[FMMP]", "Error while loading Month", exception)
+                }
+            )
+        }
+
     }
 /*
     fun loadMonth1(year: Int,  month: Int) {

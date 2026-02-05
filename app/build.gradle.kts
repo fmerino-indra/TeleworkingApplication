@@ -125,6 +125,17 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
+    // Charts
+    //implementation ("io.github.ehsannarmani:compose-charts:latest_version")
+/*
+
+    implementation(libs.vico.compose)
+    implementation(libs.vico.compose.m2)
+    implementation(libs.vico.compose.m3)
+    implementation(libs.vico.views)
+*/
+    implementation(libs.charty)
+
 }
 //kapt {
 //    correctErrorTypes = true

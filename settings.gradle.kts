@@ -11,11 +11,16 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
+
+        // Chart, pero es para views xml
+//        maven { url= uri("https://jitpack.io") }
+
     }
 }
 

@@ -1,5 +1,6 @@
 package org.fmm.teleworking.domain.model
 
+@Deprecated("Better use BasicStatsDto hierarchy")
 data class StatsDto (
     val year: Int,
     val quarter: Int=0,
