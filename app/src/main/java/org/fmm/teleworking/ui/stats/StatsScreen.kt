@@ -1,6 +1,5 @@
 package org.fmm.teleworking.ui.stats
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
@@ -33,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.himanshoe.charty.bar.ComparisonBarChart
@@ -46,53 +45,33 @@ import kotlinx.datetime.LocalDate
 import org.fmm.teleworking.domain.model.DayDto
 import org.fmm.teleworking.domain.model.Modality
 import org.fmm.teleworking.domain.model.stats.BasicStatsDto
-import org.fmm.teleworking.domain.model.stats.MonthStatsDto
 import org.fmm.teleworking.domain.model.stats.YearStatsDto
-import org.fmm.teleworking.ui.colors.COLOR_HOLIDAY
 import org.fmm.teleworking.ui.colors.COLOR_PRESENTIAL
 import org.fmm.teleworking.ui.colors.COLOR_TELEWORK
 import org.fmm.teleworking.ui.colors.COLOR_TRAVEL
 
 @Composable
 fun StatsScreen(viewModel: StatsViewModel) {
-    StatsHeaderView(
-        viewModel=viewModel,
-//        onYearChange = {},
-/*
-        onLoadAnnualStats = {year ->
-            viewModel.loadYearStats(year)
-        },
-        onLoadQuarterStats = { i: Int, i1: Int -> },
-
- */
-        onBack = {}
-    )
-/*
-    val statsUiState: StatsUIState by viewModel.statsUiState.collectAsState()
-
-    when (statsUiState) {
-        is StatsUIState.Loading -> {}
-        is StatsUIState.Idle -> {
-            StatsHeaderView(//basicStatsDto = (statsUiState as StatsUIState.Success).statsDto,
-                onYearChange = {},
-                onLoadAnnualStats = {year ->
-                    viewModel.loadYearStats(year)
-                },
-                onLoadQuarterStats = { i: Int, i1: Int -> },
-                onBack = {}
-            )
-        }
-        is StatsUIState.Success -> {
-            StatsContentView(
-                basicStatsDto = (statsUiState as StatsUIState.Success).statsDto,
-                onBack = {
-                    viewModel.initData()
-                }
-            )
-        }
+    Column (modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+        StatsHeaderView(
+            onLoadAnnualStats = { year: Int -> viewModel.loadYearStats(year) },
+            onLoadQuarterStats = { year: Int, quarter: Int ->
+                viewModel.loadQuarterStats(
+                    year,
+                    quarter
+                )
+            },
+            onLoadAllQuarterStats = { year: Int ->
+                viewModel.loadAllQuartersStats(year)
+            },
+            onBack = {}
+        )
+        StatsContent(
+            viewModel = viewModel,
+//            onBack = onBack
+        )
 
     }
-*/
 }
 
 
@@ -100,21 +79,21 @@ fun StatsScreen(viewModel: StatsViewModel) {
 /* -------------------- StatsView -------------------- */
 @Composable
 fun StatsHeaderView(
-    viewModel: StatsViewModel,
-//    onYearChange: (String) -> Unit,
-//    onLoadAnnualStats: (Int) -> Unit,
-//    onLoadQuarterStats: (Int, Int) -> Unit,
+//    viewModel: StatsViewModel,
+    onLoadAnnualStats: (Int) -> Unit,
+    onLoadQuarterStats: (Int, Int) -> Unit,
+    onLoadAllQuarterStats: (Int) -> Unit,
     onBack: () -> Unit
 ) {
-    //val yearText = basicStatsDto.year.toString()
-    //var yearText by remember { DayDto.now().year.toString() }
     var yearText by remember {
         mutableStateOf(DayDto.now().year.toString())
     }
 
-    Column (modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-        Text("Statistics", style = MaterialTheme.typography.headlineSmall)
+//    Column (modifier = Modifier.fillMaxWidth().padding(8.dp)) {
+        Text("Statistics", style = MaterialTheme.typography.bodyLarge)
         Spacer(modifier = Modifier.height(8.dp))
+        val radioOptions = listOf("Year", "Quarter 1", "All Quarters")
+        val (selectedOption, onOptionSelected) = remember { mutableStateOf(radioOptions[0]) }
         Row () {
             OutlinedTextField(
                 value = yearText,
@@ -129,8 +108,6 @@ fun StatsHeaderView(
             Column (modifier = Modifier.fillMaxWidth()) {
 // 4 RadioButtons
 //                val radioOptions = listOf("Year", "Q1", "Q2", "Q3", "Q4")
-                val radioOptions = listOf("Year", "Quarter")
-                val (selectedOption, onOptionSelected) = remember { mutableStateOf(radioOptions[0]) }
                 // Note that Modifier.selectableGroup() is essential to ensure correct accessibility behavior
                 Column(modifier = Modifier.selectableGroup()) {
                     radioOptions.forEach { text ->
@@ -157,68 +134,41 @@ fun StatsHeaderView(
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-
                     }
                 }
             }
-
-
         }
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         Row {
             Button(onClick = {
-
-                viewModel.loadYearStats(yearText.toIntOrNull()?: DayDto.now().year)
-                //onLoadAnnualStats(yearText.toIntOrNull()?: DayDto.now().year)
+                if (selectedOption == "Year")
+                    onLoadAnnualStats(yearText.toIntOrNull()?: DayDto.now().year)
+                else if (selectedOption == "Quarter 1")
+                    onLoadQuarterStats(yearText.toIntOrNull()?: DayDto.now().year, 1)
+                else
+                    onLoadAllQuarterStats(yearText.toIntOrNull()?: DayDto.now().year)
             }) {
-                Text("Load Annual")
+                Text("Load")
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = {
-                //onLoadQuarterStats(yearText.toIntOrNull()?: DayDto.now().year, 1)
-                viewModel.loadQuarterStats(yearText.toIntOrNull()?: DayDto.now().year, 1)
-            }) {
-                Text("Load Q1")
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(onClick = { onBack() }) {
-                Text("Back")
-            }
         }
-        Spacer(modifier = Modifier.height(12.dp))
-/*
-        PieChart(
-            data = {
-                listOf(
-                    PieData("Category A", 30f),
-                    PieData("Category B", 45f),
-                    PieData("Category C", 25f),
-                )
-            },
-            color = ChartyColor.Gradient(
-                listOf(Color(0xFFE91E63), Color(0xFF2196F3), Color(0xFF4CAF50))
-            ),
-            config = PieChartConfig(
-                labelConfig = LabelConfig(
-                    shouldShowLabels = true,
-                    shouldShowLabelsOutside = true
-                )
-            )
-        )
-
- */
+        //Spacer(modifier = Modifier.height(12.dp))
+        /*
         StatsContent(
             viewModel = viewModel,
             onBack = onBack
         )
-    }
+
+         */
+//    }
+
 }
 
 
 @Composable
 fun StatsContent(
     viewModel: StatsViewModel,
-    onBack: () -> Unit
+//    onBack: () -> Unit
 ) {
     val listStatsUiState: StatsUIState by viewModel.statsUiState.collectAsState()
 
@@ -230,8 +180,12 @@ fun StatsContent(
         is StatsUIState.Success -> {
             val basicStatsDto: List<BasicStatsDto> =
                 (listStatsUiState as StatsUIState.Success).listStatsDto
+            Column (Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())) {
+                StatsContentView(basicStatsDto)
+            }
 
-            StatsContentView(basicStatsDto)
 
         }
     }
@@ -240,36 +194,33 @@ fun StatsContent(
 @Composable
 fun StatsContentView(listBasicStatsDto: List<BasicStatsDto>){
 //val basicStatsDto = listBasicStatsDto[0]
-    Column (
-        modifier = Modifier
+    listBasicStatsDto.forEach { basicStatsDto ->
+        Card (Modifier
             .fillMaxWidth()
-            .fillMaxHeight()
-            .padding(1.dp)
-            //.verticalScroll(rememberScrollState())
-    ) {
-        listBasicStatsDto.forEach { basicStatsDto ->
-/*
-            Column (
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight()
-            ){
-
- */
-            Card (Modifier.fillMaxWidth().fillMaxHeight()){
-
-                Text(
-                    "Results: ${basicStatsDto.year}",
-                    style = MaterialTheme.typography.headlineSmall
-                )
-                Text("Total days: ${basicStatsDto.totalDays}")
-                Text("Working days: ${basicStatsDto.totalWorkingdays}")
-                Text("Non working days: ${basicStatsDto.totalNonWorkingdays}")
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Presential days: ${basicStatsDto.getPresentialCount()}")
-                Text("Teleworking days: ${basicStatsDto.getTeleworkingCount()}")
-                Text("Travel days: ${basicStatsDto.getTravelCount()}")
-        /*
+            .padding(6.dp)
+        //    .fillMaxHeight()
+        ){
+            Row (Modifier.padding(6.dp)) {
+                Column(
+                    modifier = Modifier
+                        //.fillMaxWidth()
+                        //.fillMaxHeight()
+                        .padding(1.dp)
+                    //.verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        "Results: ${basicStatsDto.year}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text("Total days: ${basicStatsDto.totalDays}")
+                    Text("Working days: ${basicStatsDto.totalWorkingdays}")
+                    Text("Non working days: ${basicStatsDto.totalNonWorkingdays}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Presential days: ${basicStatsDto.getPresentialCount()}")
+                    Text("Teleworking days: ${basicStatsDto.getTeleworkingCount()}")
+                    Text("Travel days: ${basicStatsDto.getTravelCount()}")
+                    /*
                 Spacer(modifier = Modifier.height(8.dp))
                 Text("From month: ${basicStatsDto.fromMonth}")
                 Text("Until month: ${basicStatsDto.untilMonth}")
@@ -278,36 +229,55 @@ fun StatsContentView(listBasicStatsDto: List<BasicStatsDto>){
                 Text("Festive days: ${basicStatsDto.getFestiveCount()}")
                 Text("Holidays days: ${basicStatsDto.getHolidayCount()}")
 */
-                StatsPieChart(basicStatsDto)
-            } // Card
-        } // forEach
-    } // column
+
+                } // Column
+                /*
+                if (basicStatsDto.getTravelCount() > 0 &&
+                    basicStatsDto.getPresentialCount() > 0 &&
+                    basicStatsDto.getTeleworkingCount() > 0 )
+
+                 */
+                StatsPieChartOld(basicStatsDto)
+
+
+            } // Row
+        } // Card
+    } // forEach
 }
 
 @Composable
 private fun StatsPieChart(basicStatsDto: BasicStatsDto) {
-
-    PieChart(
-        modifier = Modifier.fillMaxSize(),
-        data = { listOf(
-            PieData("Presential", basicStatsDto.getPresentialCount().toFloat(),
-                color = Color(COLOR_PRESENTIAL.toArgb())),
-            PieData("Teleworking", basicStatsDto.getPresentialCount().toFloat(),
-                color = Color(COLOR_TELEWORK.toArgb()))
-        ) },
-        color = ChartyColor.Gradient(
-            listOf(
-                Color(COLOR_PRESENTIAL.toArgb()),
-                Color(COLOR_TELEWORK.toArgb())
-            )
-        ),
-        config = PieChartConfig(
-            labelConfig = LabelConfig(
-                shouldShowLabels = true,
-                shouldShowLabelsOutside = true
+    Column(
+        modifier = Modifier.padding(1.dp)
+    ) {
+        PieChart(
+            modifier = Modifier.fillMaxSize(),
+            data = {
+                listOf(
+                    PieData(
+                        "Presential", basicStatsDto.getPresentialCount().toFloat(),
+                        color = Color(COLOR_PRESENTIAL.toArgb())
+                    ),
+                    PieData(
+                        "Teleworking", basicStatsDto.getPresentialCount().toFloat(),
+                        color = Color(COLOR_TELEWORK.toArgb())
+                    )
+                )
+            },
+            color = ChartyColor.Gradient(
+                listOf(
+                    Color(COLOR_PRESENTIAL.toArgb()),
+                    Color(COLOR_TELEWORK.toArgb())
+                )
             ),
-        ),
-    )
+            config = PieChartConfig(
+                labelConfig = LabelConfig(
+                    shouldShowLabels = false,
+                    shouldShowLabelsOutside = false
+                ),
+            ),
+        )
+    }
 }
 
 @Composable
@@ -320,43 +290,49 @@ private fun StatsPieChartOld(basicStatsDto: BasicStatsDto) {
     }
 
     val theData: MutableList<PieData> = mutableListOf()
+    val colors: MutableList<Color> = mutableListOf()
+
     if (basicStatsDto.getPresentialCount() > 0) {
         theData.add(
             PieData("Presential", basicStatsDto.getPresentialCount().toFloat(),
                 color = Color(COLOR_PRESENTIAL.toArgb()))
         )
+        colors.add(Color(COLOR_PRESENTIAL.toArgb()))
     }
     if (basicStatsDto.getTeleworkingCount() > 0) {
         theData.add(
             PieData("Teleworking", basicStatsDto.getTeleworkingCount().toFloat(),
                 color=Color(COLOR_TELEWORK.toArgb()))
         )
+        colors.add(Color(COLOR_TELEWORK.toArgb()))
     }
     if (basicStatsDto.getTravelCount() > 0) {
         theData.add(
             PieData("Travelling", basicStatsDto.getTravelCount().toFloat(),
                 color =  Color(COLOR_TRAVEL.toArgb()))
         )
+        colors.add(Color(COLOR_TRAVEL.toArgb()))
     }
 //    Column (Modifier.fillMaxWidth().fillMaxHeight()){
     PieChart(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().padding(5.dp),
         data = { theData.toList() },
-        /*
-        color = ChartyColor.Gradient(
+
+        color = ChartyColor.Gradient(colors
+            /*
             listOf(
                 Color(COLOR_PRESENTIAL.toArgb()),
                 Color(COLOR_TELEWORK.toArgb()),
                 Color(COLOR_TRAVEL.toArgb())
             )
-        ),
 
-         */
+             */
+        ),
         config = PieChartConfig(
             labelConfig = LabelConfig(
-                shouldShowLabels = true,
-                shouldShowLabelsOutside = true
-            ),
+                shouldShowLabels = false,
+                shouldShowLabelsOutside = false
+            ), donutHoleRatio = 0.5f
         ),
     )
 //    }

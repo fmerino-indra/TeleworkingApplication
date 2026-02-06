@@ -64,7 +64,7 @@ class StatsViewModel @Inject constructor(
         }
     }
 
-    fun loadQuarters(year:Int) {
+    fun loadAllQuartersStats(year:Int) {
         viewModelScope.launch(Dispatchers.IO) {
 
             val result = runCatching {
