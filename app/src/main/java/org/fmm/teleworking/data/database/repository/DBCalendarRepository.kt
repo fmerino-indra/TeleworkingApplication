@@ -1,5 +1,6 @@
 package org.fmm.teleworking.data.database.repository
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.DateTimeUnit
@@ -92,8 +93,24 @@ class DBCalendarRepository @Inject constructor(
     override suspend fun quarterStats(
         year: Int,
         quarter: Int
-    ): List<DayDto> =
-        toDto(db.domainDayDao().findByYear(year))
+    ): List<DayDto> {
+        var month = ((quarter-1)*3)+1
+        Log.d("[FMMP]", "Quarter: $quarter")
+        Log.d("[FMMP]", "Mont: $month")
+        val month1 = toDto(db.domainDayDao().findByYearAndMonth(year, month))
+
+        month = ((quarter-1)*3)+2
+        Log.d("[FMMP]", "Mont: $month")
+        val month2 = toDto(db.domainDayDao().findByYearAndMonth(year, month))
+
+        month = ((quarter-1)*3)+3
+        Log.d("[FMMP]", "Mont: $month")
+        val month3 = toDto(db.domainDayDao().findByYearAndMonth(year, month))
+
+        return month1 + month2 + month3
+
+    }
+
 
     /*
     override suspend fun toggleFestive(year: Int, date: LocalDate, festive: Boolean)=

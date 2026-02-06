@@ -9,4 +9,5 @@ import org.fmm.teleworking.R
  val COLOR_FESTIVE = Color(0xff616161)
  val COLOR_HOLIDAY = Color(0xff8f8f8f)
  val COLOR_WEEKEND = Color(0xffbdbdbd)
+ val COLOR_TRAVEL = Color(0xff72111e)
  val CELL_BORDER = Color(0xffe0e0e0)

@@ -7,8 +7,6 @@ import javax.inject.Inject
 class YearStats @Inject constructor(private val calendarRepository: ICalendarRepository) {
     suspend operator fun invoke(year: Int): YearStatsDto {
 
-        val dto = YearStatsDto.emptyYearDto()
-
         val aux =
             if (calendarRepository.isYearOpened(year))
                 calendarRepository.yearStats(year)

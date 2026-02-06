@@ -33,7 +33,7 @@ abstract class BasicStatsDto (
         get() {
             var acum: Int = 0
             for (m in fromMonth..untilMonth) {
-                acum += DayDto.Companion.calcNumDaysByMonth(year, m)
+                acum += DayDto.calcNumDaysByMonth(year, m)
             }
             return acum
         }
