@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -52,6 +54,7 @@ import org.fmm.teleworking.ui.colors.COLOR_TRAVEL
 
 @Composable
 fun StatsScreen(viewModel: StatsViewModel) {
+    viewModel.initData()
     Column (modifier = Modifier.fillMaxWidth().padding(8.dp)) {
         StatsHeaderView(
             onLoadAnnualStats = { year: Int -> viewModel.loadYearStats(year) },
@@ -180,10 +183,21 @@ fun StatsContent(
         is StatsUIState.Success -> {
             val basicStatsDto: List<BasicStatsDto> =
                 (listStatsUiState as StatsUIState.Success).listStatsDto
-            Column (Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())) {
-                StatsContentView(basicStatsDto)
+            if (basicStatsDto.size > 1) {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    StatsContentView(basicStatsDto)
+                }
+            } else {
+                Column(
+                    Modifier
+                        .fillMaxSize()
+                ) {
+                    StatsContentView(basicStatsDto)
+                }
             }
 
 
@@ -196,6 +210,7 @@ fun StatsContentView(listBasicStatsDto: List<BasicStatsDto>){
 //val basicStatsDto = listBasicStatsDto[0]
     listBasicStatsDto.forEach { basicStatsDto ->
         Card (Modifier
+            .heightIn(0.dp, 300.dp)
             .fillMaxWidth()
             .padding(6.dp)
         //    .fillMaxHeight()
@@ -213,6 +228,9 @@ fun StatsContentView(listBasicStatsDto: List<BasicStatsDto>){
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold
                     )
+                    Text("From month: ${basicStatsDto.fromMonth}")
+                    Text("Until month: ${basicStatsDto.untilMonth}")
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text("Total days: ${basicStatsDto.totalDays}")
                     Text("Working days: ${basicStatsDto.totalWorkingdays}")
                     Text("Non working days: ${basicStatsDto.totalNonWorkingdays}")
@@ -220,15 +238,10 @@ fun StatsContentView(listBasicStatsDto: List<BasicStatsDto>){
                     Text("Presential days: ${basicStatsDto.getPresentialCount()}")
                     Text("Teleworking days: ${basicStatsDto.getTeleworkingCount()}")
                     Text("Travel days: ${basicStatsDto.getTravelCount()}")
-                    /*
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("From month: ${basicStatsDto.fromMonth}")
-                Text("Until month: ${basicStatsDto.untilMonth}")
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Weekend days: ${basicStatsDto.getWeekendCount()}")
-                Text("Festive days: ${basicStatsDto.getFestiveCount()}")
-                Text("Holidays days: ${basicStatsDto.getHolidayCount()}")
-*/
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Weekend days: ${basicStatsDto.getWeekendCount()}")
+                    Text("Festive days: ${basicStatsDto.getFestiveCount()}")
+                    Text("Holidays days: ${basicStatsDto.getHolidayCount()}")
 
                 } // Column
                 /*
@@ -282,6 +295,7 @@ private fun StatsPieChart(basicStatsDto: BasicStatsDto) {
 
 @Composable
 private fun StatsPieChartOld(basicStatsDto: BasicStatsDto) {
+
     if ((basicStatsDto.getPresentialCount() == 0) &&
         (basicStatsDto.getTeleworkingCount() == 0) &&
         (basicStatsDto.getTravelCount() == 0)
@@ -330,7 +344,7 @@ private fun StatsPieChartOld(basicStatsDto: BasicStatsDto) {
         ),
         config = PieChartConfig(
             labelConfig = LabelConfig(
-                shouldShowLabels = false,
+                shouldShowLabels = true,
                 shouldShowLabelsOutside = false
             ), donutHoleRatio = 0.5f
         ),

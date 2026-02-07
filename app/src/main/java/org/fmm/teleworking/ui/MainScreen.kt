@@ -56,15 +56,21 @@ fun MainScreen(entryViewModel: CalendarViewModel) {
     // obtain viewModel via Hilt if not provided (helps previews / tests)
     val viewModel: CalendarViewModel = entryViewModel
 
-    /*
-     Dates
-     */
+    /* Dates */
 
     //val today = remember { LocalDate.now() }
     // current month/year defaults (start with current month)
     val today = remember {  Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date }
     val currentYear = today.year
     val currentMonth = today.monthNumber
+
+    val isPreviousOpen: Boolean = remember {
+        entryViewModel.isYearOpened(currentYear-1)
+    }
+    val isNextOpen: Boolean = remember {
+        entryViewModel.isYearOpened(currentYear+1)
+    }
+
 
     /*
     Navigation and menu
@@ -246,24 +252,6 @@ fun MainScreenContent(
                 }
                 is Screen.Stats -> {
                     StatsScreen(hiltViewModel<StatsViewModel>())
-                    /*
-                    StatsHeaderView(
-                        yearText = yearText,
-                        basicStatsDto = QuarterStatsDto.emptyYearDto(),
-                        onYearChange = onYearChange,
-                        onLoadAnnualStats = { y ->
-                            /* delegate to VM in MainScreen */
-                            onLoadMonth(y,1)
-                        },
-                        onLoadQuarterStats = { y,q ->
-                            /* same: delegate*/
-                            onLoadMonth(y,(q-1) *3+1)
-                        },
-                        onBack = { onNavigateToMonth() },
-                        viewModel = hiltViewModel<StatsViewModel>()
-                    )
-
-                     */
                 }
             }
         }

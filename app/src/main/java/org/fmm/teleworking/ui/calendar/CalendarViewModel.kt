@@ -161,4 +161,8 @@ class CalendarViewModel @Inject constructor(
             loadMonth(year, month)
         }
     }
+
+    fun isYearOpened(year: Int): Boolean {
+        return isYearOpened(year)
+    }
 }

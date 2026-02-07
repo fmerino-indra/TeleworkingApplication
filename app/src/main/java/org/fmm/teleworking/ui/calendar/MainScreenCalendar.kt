@@ -21,6 +21,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AirplanemodeActive
+import androidx.compose.material.icons.filled.BeachAccess
+import androidx.compose.material.icons.filled.Bed
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.Button
@@ -45,7 +48,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.ColorUtils
-import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.minus
@@ -58,11 +60,12 @@ import org.fmm.teleworking.ui.colors.COLOR_FESTIVE
 import org.fmm.teleworking.ui.colors.COLOR_HOLIDAY
 import org.fmm.teleworking.ui.colors.COLOR_PRESENTIAL
 import org.fmm.teleworking.ui.colors.COLOR_TELEWORK
+import org.fmm.teleworking.ui.colors.COLOR_TRAVEL
 import org.fmm.teleworking.ui.colors.COLOR_UNASSIGNED
 import org.fmm.teleworking.ui.colors.COLOR_WEEKEND
 import java.time.YearMonth
 
-enum class EditMode2 { NONE, TELEWORK, PRESENTIAL }
+enum class EditMode2 { NONE, TELEWORK, PRESENTIAL, TRAVEL, HOLIDAY, FESTIVE }
 
 
 @Composable
@@ -75,33 +78,24 @@ fun MainScreenCalendarMonthEditor (
 ){
     //val vm = hiltViewModel<CalendarViewModel>()
 
-    // Which edit mode is active (T/P/None)
+    // Which edit mode is active (T/P/I/None)
     var editMode: EditMode2 by remember { mutableStateOf(EditMode2.NONE) }
-    //editMode = EditMode2.PRESENTIAL
+
+
+
+
     Column(modifier = modifier.padding(8.dp)) {
-        /*
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Edit", modifier = Modifier.padding(end = 8.dp),
-                style=MaterialTheme.typography.labelMedium)
-            ToggleButton(label="T", colorBase=COLOR_TELEWORK, selected=editMode == EditMode2.TELEWORK,
-                onClick
-            =  {
-                editMode = if (editMode == EditMode2.TELEWORK) EditMode2.NONE else EditMode2.TELEWORK
-            })
-            Spacer(modifier = Modifier.width(8.dp))
-            ToggleButton(label="P", colorBase=COLOR_PRESENTIAL, selected=editMode == EditMode2.PRESENTIAL,
-                onClick =  {
-                editMode = if (editMode == EditMode2.PRESENTIAL) EditMode2.NONE else EditMode2.PRESENTIAL
-            })
-            Spacer(modifier = Modifier.width(12.dp))
+        Row {
+
             Text(
-                text = "${YearMonth.of(year, month).month.name.lowercase()
-                    .replaceFirstChar { it.uppercase() }} $year",
-                style = MaterialTheme.typography.labelMedium
+                text = "${
+                    YearMonth.of(year, month).month.name.lowercase()
+                        .replaceFirstChar { it.uppercase() }
+                } $year",
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.Center
             )
         }
-
-         */
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -112,7 +106,7 @@ fun MainScreenCalendarMonthEditor (
                 onClick = {
                     editMode = if (editMode == EditMode2.TELEWORK) EditMode2.NONE else EditMode2.TELEWORK
                 })
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(6.dp))
             ModeSelector2(label="P",
                 icon = Icons.Default.Home,
                 color=COLOR_PRESENTIAL,
@@ -120,12 +114,36 @@ fun MainScreenCalendarMonthEditor (
                 onClick = {
                     editMode = if (editMode == EditMode2.PRESENTIAL) EditMode2.NONE else EditMode2.PRESENTIAL
                 })
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = "${YearMonth.of(year, month).month.name.lowercase()
-                    .replaceFirstChar { it.uppercase() }} $year",
-                style = MaterialTheme.typography.labelMedium
-            )
+            Spacer(modifier = Modifier.width(6.dp))
+            ModeSelector2(label="I",
+                icon = Icons.Default.AirplanemodeActive,
+                color= COLOR_TRAVEL,
+                selected=editMode == EditMode2.TRAVEL,
+                onClick = {
+                    editMode =
+                        if (editMode == EditMode2.TRAVEL) EditMode2.NONE
+                        else EditMode2.TRAVEL
+                })
+            Spacer(modifier = Modifier.width(6.dp))
+            ModeSelector2(label="V",
+                icon = Icons.Default.BeachAccess,
+                color= COLOR_HOLIDAY,
+                selected=editMode == EditMode2.HOLIDAY,
+                onClick = {
+                    editMode =
+                        if (editMode == EditMode2.HOLIDAY) EditMode2.NONE
+                        else EditMode2.HOLIDAY
+                })
+            Spacer(modifier = Modifier.width(6.dp))
+            ModeSelector2(label="F",
+                icon = Icons.Default.Bed,
+                color= COLOR_FESTIVE,
+                selected=editMode == EditMode2.FESTIVE,
+                onClick = {
+                    editMode =
+                        if (editMode == EditMode2.FESTIVE) EditMode2.NONE
+                        else EditMode2.FESTIVE
+                })
         }
 
         // Build calendar matrix: list of weeks, each week is list of LocalDate?
@@ -333,6 +351,9 @@ private fun DayCellTap(
         dto?.isHoliday() == true -> COLOR_HOLIDAY
         dto?.isTelework() == true -> COLOR_TELEWORK
         dto?.isPresential() == true -> COLOR_PRESENTIAL
+        dto?.isTravel() == true -> COLOR_TRAVEL
+        dto?.isHoliday() == true -> COLOR_HOLIDAY
+        dto?.isFestive() == true -> COLOR_FESTIVE
         else -> COLOR_UNASSIGNED
     }
 
@@ -348,10 +369,14 @@ private fun DayCellTap(
             .clickable {
                 if (editMode != EditMode2.NONE && !isNonEditableDay(dto)) {
                     val modality =
-                        if (editMode == EditMode2.TELEWORK)
-                            Modality.TELEWORK
-                        else
-                            Modality.PRESENTIAL
+                        when (editMode) {
+                            EditMode2.TELEWORK -> Modality.TELEWORK
+                            EditMode2.PRESENTIAL -> Modality.PRESENTIAL
+                            EditMode2.TRAVEL -> Modality.TRAVEL
+                            EditMode2.HOLIDAY -> Modality.HOLIDAY
+                            EditMode2.FESTIVE -> Modality.FESTIVE
+                            else -> Modality.UNASSIGNED
+                        }
                     onApply(date, modality)
                 }
             }
