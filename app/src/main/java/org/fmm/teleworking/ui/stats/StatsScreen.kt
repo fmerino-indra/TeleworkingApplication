@@ -3,13 +3,11 @@ package org.fmm.teleworking.ui.stats
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -36,6 +34,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.himanshoe.charty.bar.ComparisonBarChart
 import com.himanshoe.charty.bar.data.BarGroup
 import com.himanshoe.charty.color.ChartyColor
@@ -53,7 +52,9 @@ import org.fmm.teleworking.ui.colors.COLOR_TELEWORK
 import org.fmm.teleworking.ui.colors.COLOR_TRAVEL
 
 @Composable
-fun StatsScreen(viewModel: StatsViewModel) {
+fun StatsScreen() {
+    val viewModel: StatsViewModel = hiltViewModel<StatsViewModel>()
+
     viewModel.initData()
     Column (modifier = Modifier.fillMaxWidth().padding(8.dp)) {
         StatsHeaderView(

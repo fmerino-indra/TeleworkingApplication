@@ -11,7 +11,7 @@ import org.fmm.teleworking.data.model.YearConfig
 @Dao
 interface YearConfigDao {
     @Query("SELECT * FROM YearConfig")
-    fun findAllYearConfig(): Flow<List<YearConfig>>
+    fun findAllYearConfig(): List<YearConfig>
 
     @Query("SELECT * FROM YearConfig WHERE year = :id")
     fun findById(id: Int): YearConfig?

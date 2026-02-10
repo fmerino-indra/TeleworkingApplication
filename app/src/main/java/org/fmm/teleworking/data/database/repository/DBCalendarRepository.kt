@@ -58,6 +58,13 @@ class DBCalendarRepository @Inject constructor(
         yearConfig
     }
 
+    override suspend fun getOpenedYears(): List<YearConfig> {
+//        return withContext(Dispatchers.IO) {
+            val aux = db.yearConfigDao().findAllYearConfig()
+            return aux
+//        }
+    }
+
     override suspend fun isYearOpened(year: Int): Boolean {
         val config = getYearConfig(year)
         return (config != null)
@@ -67,6 +74,18 @@ class DBCalendarRepository @Inject constructor(
         val config: YearConfig? = db.yearConfigDao().findById(year)
         config
     }
+
+    override suspend fun getAllDays(): List<DayDto> {
+        val list = db.domainDayDao().findAllDomainDay()
+        return list.stream()
+            .map {
+                DayDto(
+                    date = it.date,
+                    modality = it.modality
+                )}
+            .collect(Collectors.toList())
+    }
+
     override suspend fun getMonth(year: Int, month:Int): List<DayDto>  = withContext(Dispatchers.IO) {
         val lists = db.domainDayDao().findByYearAndMonth(year, month)
         lists.stream()

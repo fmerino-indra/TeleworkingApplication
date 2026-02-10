@@ -8,12 +8,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.number
+import okhttp3.internal.concurrent.Task
+import org.fmm.teleworking.data.model.YearConfig
 import org.fmm.teleworking.domain.model.Modality
 import org.fmm.teleworking.domain.model.stats.MonthStatsDto
 import org.fmm.teleworking.domain.usecases.GetMonth
+import org.fmm.teleworking.domain.usecases.GetOpenedYears
 import org.fmm.teleworking.domain.usecases.IsYearOpened
 import org.fmm.teleworking.domain.usecases.OpenYear
 import org.fmm.teleworking.domain.usecases.SetModality
@@ -27,7 +31,8 @@ class CalendarViewModel @Inject constructor(
     private val getMonthUC: GetMonth,
     private val setModalityUC: SetModality,
     private val isYearOpenedUC: IsYearOpened,
-    private val yearStatsUC: YearStats
+    private val yearStatsUC: YearStats,
+    private val getOpenedYearsUC: GetOpenedYears
 ): ViewModel() {
     private val _uiState = MutableStateFlow<UiState>(UiState.Loading)
     val uiState get() = _uiState.asStateFlow()
@@ -52,6 +57,9 @@ class CalendarViewModel @Inject constructor(
         }
     }
 
+    fun reset() {
+        _uiState.value = UiState.Idle
+    }
     fun openYear(year: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             openYearUC(year)
@@ -143,14 +151,6 @@ class CalendarViewModel @Inject constructor(
     }
 */
 
-/*
-    fun toggleFestive(year: Int, date: LocalDate, festive: Boolean) {
-        viewModelScope.launch {
-            repo.toggleFestive(year, date, festive)
-            loadMonth(year, date.month.number ) // Recarga mes
-        }
-    }
-*/
     fun setModality(date: LocalDate, modality: Modality) {
         viewModelScope.launch(Dispatchers.IO) {
             Log.d("[FMMP]", "setModality: $modality")
@@ -162,7 +162,28 @@ class CalendarViewModel @Inject constructor(
         }
     }
 
-    fun isYearOpened(year: Int): Boolean {
-        return isYearOpened(year)
+    /*
+    Esto obliga a llamarla así:
+    lifecycleScope.launch {
+        val estaAbierto = viewModel.isOpened(2025)
+        if (estaAbierto) {...}
     }
+    */
+
+    /*
+    suspend fun isYearOpened(year: Int): Boolean {
+        return withContext(Dispatchers.IO) {
+              isYearOpenedUC(year)
+        }
+    }
+    */
+
+
+    fun isYearOpened(year: Int): Boolean {
+        return runBlocking(Dispatchers.IO) {
+            val aux = isYearOpenedUC(year)
+            aux
+        }
+    }
+
 }

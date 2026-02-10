@@ -1,24 +1,19 @@
 package org.fmm.teleworking.ui
 
 import android.util.Log
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Settings
 
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,16 +29,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import org.fmm.fmm_navigation.ui.navigation.NavItem
-import org.fmm.fmm_navigation.ui.navigation.Navigation
 import org.fmm.teleworking.domain.model.DayDto
 import org.fmm.teleworking.domain.model.Modality
 import org.fmm.teleworking.domain.model.stats.BasicStatsDto
@@ -57,64 +46,203 @@ import org.fmm.teleworking.ui.openyear.YearViewModel
 import org.fmm.teleworking.ui.stats.StatsScreen
 import org.fmm.teleworking.ui.stats.StatsViewModel
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
-@Composable
-fun MainScreen(
-) {
-    val navController: NavHostController = rememberNavController()
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
+// Habría que definir aquí la clase sealed Screend
 
-    Scaffold   (
-
-        topBar = {
-            if (currentRoute?.contains(NavItem.MainNavItem.route) ?: true) {
-                MainAppBar(navController)
-            } else {
-                SecondaryAppBar(getTitle(currentRoute)) { navController.popBackStack()}
-            }
-        },
-        bottomBar =  {
-            if (currentRoute?.contains(NavItem.MainNavItem.route) == false) {
-                BottomNavigationBar(navController)
-            }
-        }
-    ) { innerPadding ->
-        Navigation(navController,innerPadding)
-    }
+sealed class Screen {
+    object None: Screen()
+    object Month : Screen()
+    object OpenYear: Screen()
+    object Stats : Screen()
 }
 
-private fun getTitle(route: String?): String {
-    return when {
-        route == null -> "NavItem.MainNavItem.title"
-        route.contains(NavItem.MainNavItem.route) -> NavItem.MainNavItem.title
-        route.contains(NavItem.CalendarNavItem.route) -> NavItem.CalendarNavItem .title
-        route.contains(NavItem.StatisticsNavItem.route) -> NavItem.StatisticsNavItem.title
-        else -> NavItem.MainNavItem.title
+
+@Composable
+//fun MainScreen(calendarViewModel: CalendarViewModel) {
+fun MainScreenOld(
+    onNavigateToStats: () -> Unit
+) {
+    // Quitar
+    val calendarViewModel: CalendarViewModel = hiltViewModel()
+
+    // obtain viewModel via Hilt if not provided (helps previews / tests)
+//    val viewModel: CalendarViewModel = entryViewModel
+
+    /* Dates */
+
+    //val today = remember { LocalDate.now() }
+    // current month/year defaults (start with current month)
+    val today = remember {  Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date }
+    val currentYear = today.year
+    val currentMonth = today.monthNumber
+
+    val isPreviousOpen: Boolean = remember {
+        calendarViewModel.isYearOpened(currentYear-1)
     }
+    val isNextOpen: Boolean = remember {
+        calendarViewModel.isYearOpened(currentYear+1)
+    }
+
+
+    /*
+    Navigation and menu
+    */
+
+    // screen selection
+    var currentScreen by remember {
+        mutableStateOf<Screen>(Screen.None)
+    }
+
+    // menu state for 3-dots menu
+    var menuExpanded by remember {
+        mutableStateOf(false)
+    }
+
+
+    // year input state (shared beween screens)
+    var yearText by remember {
+        mutableStateOf(today.year.toString())
+    }
+
+    // Collect days state from ViewModel
+    //val days by viewModel.monthDays.collectAsState(initial = emptyList())
+//    val monthDto by viewModel.monthDto.collectAsState()
+    val uiState by calendarViewModel.uiState.collectAsState()
+
+    val monthDto =
+        when (uiState) {
+            is UiState.Loading -> {
+                val aux = MonthStatsDto.emptyMonthDto()
+                aux
+            }
+            is UiState.Idle -> MonthStatsDto.emptyMonthDto()
+            is UiState.Success -> (uiState as UiState.Success).monthDto
+        }
+
+
+    // when screen first composed: Load current month automatically
+    LaunchedEffect(Unit) {
+        // ensure yearText set to current year
+        yearText = currentYear.toString()
+
+        // open year (create calendar) optionally - comment if you don't want auto-open
+        // viewModel.openYear(currentYear)
+
+        //viewModel.loadMonth(currentYear, currentMonth)
+    }
+
+    // Call the UI-only composable, passing all callbacks and state
+    MainScreenContentOld(
+        /*
+        calendarViewModel = calendarViewModel,
+        monthDto = monthDto,
+        yearText = yearText,
+        currentMonth = currentMonth,
+        currentYear = currentYear,
+
+         */
+        menuExpanded = menuExpanded,
+        onMenuToggle = { menuExpanded = it },
+        onNavigateToOpenYear = {
+            menuExpanded = false
+            currentScreen = Screen.OpenYear
+        },
+        onNavigateToStats = onNavigateToStats,
+        /*
+            {
+            menuExpanded = false
+            currentScreen = Screen.Stats
+        },
+
+         */
+        onNavigateToMonth = {
+            menuExpanded = false
+            currentScreen = Screen.Month
+            val y = yearText.toIntOrNull() ?: currentYear
+            calendarViewModel.loadMonth(y, currentMonth)
+        },
+        /*
+        onYearChange = { newYear -> yearText = newYear },
+        onOpenYear = {y ->
+            yearText = y.toString()
+            calendarViewModel.openYear(y)
+            // After opening, show month view (January)
+            currentScreen = Screen.Month
+            calendarViewModel.loadMonth(y, 1)
+        },
+        onLoadMonth = { y, m ->
+            calendarViewModel.loadMonth(y,m)
+            currentScreen = Screen.Month
+        },
+        onSetTelework = { date -> calendarViewModel.setModality(date, Modality.TELEWORK)},
+        onSetPresential = { date -> calendarViewModel.setModality(date, Modality.PRESENTIAL)},
+        onSetModality = { date, modality ->
+            calendarViewModel.setModality(date = date, modality = modality) },
+
+         */
+
+        currentScreen = currentScreen
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MainAppBar(
-    navController: NavController
-//    onNavigateToStats: () -> Unit
+fun MainScreenContentOld(
+    menuExpanded: Boolean,
+    onMenuToggle: (Boolean) -> Unit,
+    onNavigateToOpenYear: () -> Unit,
+    onNavigateToStats: () -> Unit,
+    onNavigateToMonth: () -> Unit,
+    currentScreen: Screen
 ) {
+
+    Scaffold   (
+
+        topBar = {
+            MainAppBar(onNavigateToStats = onNavigateToStats)
+        }
+    ) { innerPadding ->
+        Box(modifier = Modifier
+            .padding(innerPadding)
+            .fillMaxSize()) {
+            when (currentScreen) {
+                is Screen.None -> {
+
+                }
+                is Screen.Month -> {
+                    MainScreenMonth()
+                    /*
+                    MainScreenCalendarMonthEditor(
+                        year = yearText.toIntOrNull() ?: currentYear,
+                        month = currentMonth,
+                        monthDto = monthDto as MonthStatsDto,
+                        onApplyModality = { date, modality ->
+                            onSetModality(date, modality)
+                        })
+
+                     */
+                }
+                is Screen.OpenYear -> {
+                    OpenYearScreen()
+                }
+                is Screen.Stats -> {
+                    StatsScreen()
+                }
+            }
+        }
+    }
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MainAppBar(onNavigateToStats: () -> Unit) {
     TopAppBar(
-        title = { Text("Teleworking control") },
+        title = { Text("Control Teletrabajo") },
         actions =  {
             // three dots menu
             AppBarAction(
                 imageVector = Icons.Default.MoreVert,
-                onNavigateToMonth = {
-                    navController.navigate(NavItem.CalendarNavItem.route)
-                },
-                onNavigateToOpenYear = {
-                    navController.navigate(NavItem.ListYearsNavItem.route)
-                },
-                onNavigateToStats = {
-                    navController.navigate(NavItem.StatisticsNavItem.route)
-                },
+                onNavigateToMonth = {},
+                onNavigateToOpenYear = {},
+                onNavigateToStats = onNavigateToStats,
             )
             /*
                         IconButton (onClick = { }) {
@@ -206,7 +334,6 @@ private fun AppBarAction(
             text = {Text("Open Year")},
             onClick = {
                 onMenuToggle(false)
-                onNavigateToOpenYear()
             }
         )
         DropdownMenuItem(
@@ -220,39 +347,20 @@ private fun AppBarAction(
             text = {Text("Load Month")},
             onClick = {
                 onMenuToggle(false)
-                onNavigateToMonth()
             }
         )
     } // DropdownMenu
 }
 
-@Composable
-private fun BottomNavigationBar(navController: NavController) {
-    NavigationBar {
-        NavigationBarItem(
-            icon = { Icon(Icons.Default.Home, contentDescription = null) },
-            label = { Text("Sub-Pantalla 1") },
-            selected = false,
-            onClick = { /* Navegar a sub-ruta */ }
-        )
-        NavigationBarItem(
-            icon = { Icon(Icons.Default.Settings, contentDescription = null) },
-            label = { Text("Sub-Pantalla 2") },
-            selected = false,
-            onClick = { /* Navegar a sub-ruta */ }
-        )
-    }
-}
-
 
 @Preview()
 @Composable
-fun Preview() {
+fun PreviewOld() {
 }
 
 @Preview(showBackground = true, widthDp =360, heightDp = 640)
 @Composable
-fun CalendarMonthEditorPreview() {
+fun CalendarMonthEditorPreviewOld() {
     val sampleDays = listOf(
         DayDto(LocalDate.parse("2026-01-01"), Modality.FESTIVE),
         DayDto(LocalDate.parse("2026-01-02"), Modality.TELEWORK),

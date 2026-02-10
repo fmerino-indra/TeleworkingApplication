@@ -24,16 +24,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AirplanemodeActive
 import androidx.compose.material.icons.filled.BeachAccess
 import androidx.compose.material.icons.filled.Bed
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -48,13 +54,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.ColorUtils
+import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.datetime.Clock
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import kotlinx.datetime.plus
+import kotlinx.datetime.toLocalDateTime
 import org.fmm.teleworking.domain.model.DayDto
 import org.fmm.teleworking.domain.model.Modality
 import org.fmm.teleworking.domain.model.stats.MonthStatsDto
+import org.fmm.teleworking.ui.UiState
 import org.fmm.teleworking.ui.colors.CELL_BORDER
 import org.fmm.teleworking.ui.colors.COLOR_FESTIVE
 import org.fmm.teleworking.ui.colors.COLOR_HOLIDAY
@@ -69,12 +80,105 @@ enum class EditMode2 { NONE, TELEWORK, PRESENTIAL, TRAVEL, HOLIDAY, FESTIVE }
 
 
 @Composable
+fun MainScreenMonth() {
+    val viewModel: CalendarViewModel = hiltViewModel<CalendarViewModel>()
+    /* Dates */
+
+    val today = remember {  Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date }
+    var currentYear by remember { mutableIntStateOf(today.year) }
+    var currentMonth by remember { mutableIntStateOf(today.monthNumber) }
+
+    var isPreviousOpened: Boolean by remember {
+        mutableStateOf (viewModel.isYearOpened(currentYear-1))
+    }
+    var isNextOpened: Boolean by remember {
+        mutableStateOf (viewModel.isYearOpened(currentYear+1))
+    }
+
+
+    // year input state (shared between screens)
+    var yearText by remember {
+        mutableStateOf(currentYear.toString())
+    }
+
+
+    // when screen first composed: Load current month automatically
+    LaunchedEffect(Unit) {
+        // ensure yearText set to current year
+        yearText = currentYear.toString()
+
+        // open year (create calendar) optionally - comment if you don't want auto-open
+        // viewModel.openYear(currentYear)
+
+        viewModel.loadMonth(currentYear, currentMonth)
+    }
+
+
+    // Collect days state from ViewModel
+    val uiState by viewModel.uiState.collectAsState()
+
+    val monthDto =
+        when (uiState) {
+            is UiState.Loading -> {
+                val aux = MonthStatsDto.emptyMonthDto()
+                aux
+            }
+            is UiState.Idle -> MonthStatsDto.emptyMonthDto()
+            is UiState.Success -> (uiState as UiState.Success).monthDto
+        }
+
+    MainScreenCalendarMonthEditor(
+        year =  currentYear,
+        month = currentMonth,
+        monthDto = monthDto as MonthStatsDto,
+        isPreviousNavigable = (currentMonth > 1) || isPreviousOpened
+        ,
+        isNextNavigable = (currentMonth < 12) || isNextOpened,
+        onApplyModality = { date, modality ->
+            viewModel.setModality(date, modality)
+        },
+        onPrevious = {
+            if (currentMonth > 1) {
+                currentMonth--
+                viewModel.loadMonth(year = currentYear, month = currentMonth)
+            } else {
+                if (isPreviousOpened) {
+                    currentMonth = 12
+                    currentYear--
+                    isPreviousOpened = viewModel.isYearOpened(currentYear)
+                    isNextOpened = true
+                    viewModel.loadMonth(year = currentYear, month = currentMonth)
+                }
+            }
+        },
+        onNext = {
+            if (currentMonth < 12) {
+                currentMonth++
+                viewModel.loadMonth(year = currentYear, month = currentMonth)
+            } else {
+                if (isNextOpened) {
+                    currentMonth = 1
+                    currentYear++
+                    isPreviousOpened = true
+                    isNextOpened = viewModel.isYearOpened(currentYear)
+                    viewModel.loadMonth(year = currentYear, month = currentMonth)
+                }
+            }
+        }
+    )
+}
+
+@Composable
 fun MainScreenCalendarMonthEditor (
     year: Int,
     month: Int,
     monthDto: MonthStatsDto,
+    isPreviousNavigable: Boolean,
+    isNextNavigable: Boolean,
     modifier: Modifier = Modifier,
-    onApplyModality: (date: LocalDate, modality: Modality) -> Unit
+    onApplyModality: (date: LocalDate, modality: Modality) -> Unit,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit
 ){
     //val vm = hiltViewModel<CalendarViewModel>()
 
@@ -85,7 +189,20 @@ fun MainScreenCalendarMonthEditor (
 
 
     Column(modifier = modifier.padding(8.dp)) {
-        Row {
+        Row (modifier = modifier
+            .align(Alignment.CenterHorizontally)
+            .background(COLOR_WEEKEND)){
+            IconButton(
+                enabled = isPreviousNavigable,
+                onClick = onPrevious
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FastRewind,
+                    contentDescription = "Previous month",
+                    tint =  Color.White,
+                    modifier = Modifier.padding(6.dp),
+                )
+            }
 
             Text(
                 text = "${
@@ -93,8 +210,22 @@ fun MainScreenCalendarMonthEditor (
                         .replaceFirstChar { it.uppercase() }
                 } $year",
                 style = MaterialTheme.typography.labelMedium,
-                textAlign = TextAlign.Center
+//                textAlign = TextAlign.Center,
+                color = Color.White,
+                modifier = modifier
+                    .align(Alignment.CenterVertically)
             )
+            IconButton(
+                enabled = isNextNavigable,
+                onClick = onNext
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FastForward,
+                    contentDescription = "Previous month",
+                    tint = Color.White,
+                    modifier = Modifier.padding(6.dp)
+                )
+            }
         }
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -161,7 +292,9 @@ fun MainScreenCalendarMonthEditor (
             Row(modifier = Modifier.fillMaxWidth()) {
                 val headers = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
                 for (h in headers) {
-                    Box(modifier = Modifier.weight(1f).padding(4.dp),
+                    Box(modifier = Modifier
+                        .weight(1f)
+                        .padding(4.dp),
                         contentAlignment =Alignment.Center){
                         Text(h, fontWeight = FontWeight.Bold, style=MaterialTheme.typography
                             .bodyMedium,
@@ -183,11 +316,13 @@ fun MainScreenCalendarMonthEditor (
                         ) {
                             if (date == null) {
                                 // empty cell
-                                Box(modifier = Modifier.fillMaxSize().border(
-                                    width = 5.dp,
-                                    color= CELL_BORDER,
-                                    shape = RoundedCornerShape(6.dp)
-                                ))
+                                Box(modifier = Modifier
+                                    .fillMaxSize()
+                                    .border(
+                                        width = 5.dp,
+                                        color = CELL_BORDER,
+                                        shape = RoundedCornerShape(6.dp)
+                                    ))
                             } else {
                                 val dto = dayMap[date]
                                 DayCellTap(
@@ -242,10 +377,10 @@ private fun ModeSelector(label: String, icon: ImageVector,
 
     Row (
         modifier = Modifier
-            .padding(end =4.dp)
+            .padding(end = 4.dp)
             .background(bg, RoundedCornerShape(8.dp))
-            .clickable { onClick()}
-            .padding(horizontal =  8.dp, vertical = 6.dp),
+            .clickable { onClick() }
+            .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
@@ -299,18 +434,18 @@ private fun ModeSelector2(label: String, icon: ImageVector,
 
     Row (
         modifier = Modifier
-            .padding(end =8.dp)
+            .padding(end = 8.dp)
             .background(containerBg, RoundedCornerShape(10.dp))
             .border(
-                width =  1.dp,
+                width = 1.dp,
                 color = borderColor,
                 shape = RoundedCornerShape(10.dp)
             )
-            .clickable (
+            .clickable(
                 onClick = onClick,
                 role = Role.Button
             )
-            .padding(horizontal =  8.dp, vertical = 6.dp),
+            .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
@@ -364,7 +499,7 @@ private fun DayCellTap(
         modifier = Modifier
             .fillMaxSize()
             .border(1.dp, borderColor, RoundedCornerShape(6.dp))
-            .background(color=bg, shape = RoundedCornerShape(6.dp))
+            .background(color = bg, shape = RoundedCornerShape(6.dp))
             .padding(6.dp)
             .clickable {
                 if (editMode != EditMode2.NONE && !isNonEditableDay(dto)) {
@@ -466,11 +601,16 @@ fun CalendarMonthEditorPreview() {
     )
     Surface {
         MainScreenCalendarMonthEditor(
-        year =2026,
-        month = 1,
-        monthDto = MonthStatsDto(year = 2026 ,  month = 1, sampleDays) ,
-        onApplyModality = { dateIso, modality -> }
-    )}
+            year = 2026,
+            month = 1,
+            monthDto = MonthStatsDto(year = 2026, month = 1, sampleDays),
+            onApplyModality = { dateIso, modality -> },
+            isPreviousNavigable = false,
+            isNextNavigable = true,
+            modifier = Modifier,
+            onPrevious = {},
+            onNext = {}
+        )}
 }
 
 fun java.time.LocalDate.toKxLocalDate(): LocalDate = LocalDate(year, monthValue, dayOfMonth)
